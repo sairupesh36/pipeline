@@ -23,47 +23,60 @@ The `WarcReader` used in the script has specific dependencies:
 
 These are typically installed as dependencies of `datatrove`. However, it's good to be aware of them, especially if you encounter any issues related to file reading or encoding.
 
+## Configuration
+
+Before running the script, you need to configure the pipeline by editing the global variables at the top of the `examples/process_local_wet_files.py` file.
+
+Key configuration variables:
+
+*   `INPUT_DIR`: Set this to the path of your local directory containing the WET files.
+    *   Example: `INPUT_DIR = "/path/to/your/wet/files/"`
+*   `OUTPUT_DIR`: Set this to the path where the processed JSONL files and excluded files will be saved.
+    *   Example: `OUTPUT_DIR = "/path/to/your/output/"`
+*   `LANGUAGES`: A list of language codes (e.g., "en", "es", "fr") to filter by. Documents matching any of these languages will be kept.
+    *   Example: `LANGUAGES = ["en"]` or `LANGUAGES = ["en", "es"]`
+*   `GLOB_PATTERN`: The glob pattern used to find WET files within the `INPUT_DIR`.
+    *   Default: `GLOB_PATTERN = "*.wet.gz"`
+*   `RAY_TASKS`: The number of parallel Ray tasks to use for processing. Adjust this based on your machine's capacity (e.g., number of CPU cores).
+    *   Default: `RAY_TASKS = 2`
+*   `LOGGING_DIR`: The directory where pipeline logs (specifically Ray logs) will be stored.
+    *   Default: `LOGGING_DIR = "pipeline_logs/"`
+
+Example configuration block in the script:
+
+```python
+# Configuration variables
+INPUT_DIR = "data/wet_files/"  # TODO: Update this path
+OUTPUT_DIR = "output/processed_data/"  # TODO: Update this path
+LANGUAGES = ["en", "es"]  # TODO: Update with desired languages
+GLOB_PATTERN = "*.wet.gz"
+RAY_TASKS = 2
+LOGGING_DIR = "pipeline_logs/"
+```
+**Important:** Make sure to update `INPUT_DIR`, `OUTPUT_DIR`, and `LANGUAGES` according to your specific file locations and processing needs.
+
 ## Running the Script
 
-You can run the script from the root of the `datatrove` repository.
-
-### Example Command
+Once you have configured the variables in `examples/process_local_wet_files.py`, you can run the script directly from the root of the `datatrove` repository:
 
 ```bash
-python examples/process_local_wet_files.py <your_wet_files_directory> <your_output_directory> en --ray_tasks 4 --logging_dir ./my_pipeline_logs
+python examples/process_local_wet_files.py
 ```
-
-### Argument Explanations
-
-*   **Positional Arguments**:
-    *   `<your_wet_files_directory>`: (Required) Replace this with the path to the directory where your `.wet.gz` (or other specified pattern) files are stored.
-    *   `<your_output_directory>`: (Required) Replace this with the path to the directory where the processed JSONL files will be saved.
-    *   `language`: (Required) One or more language codes (e.g., `en`, or `en es fr`) to filter the documents. The script will process documents matching any of these languages. Defaults to `en` if not specified, but it's a required argument in the command structure.
-
-*   **Optional Arguments**:
-    *   `--glob_pattern`: (Optional) The glob pattern to find WET files within your input directory.
-        *   Default: `*.wet.gz`
-        *   Example: `*.wet` for uncompressed WET files, or `data/**/*.wet.gz` for recursive search.
-    *   `--ray_tasks`: (Optional) The number of parallel Ray tasks to use for processing.
-        *   Default: `1`
-        *   Adjust this based on your machine's capacity (e.g., number of CPU cores).
-    *   `--logging_dir`: (Optional) The directory where pipeline execution logs (specifically Ray logs) will be stored.
-        *   Default: `./pipeline_logs`
 
 ## Output Structure
 
-The script will generate output in the specified directories:
+The script will generate output in the directories specified by the `OUTPUT_DIR` and `LOGGING_DIR` configuration variables:
 
 *   **Filtered Output**:
-    *   Location: `<your_output_directory>/filtered_<lang1>_<lang2>.../`
-    *   Content: JSONL files containing documents that matched the specified language(s). For example, if you run with `en es`, the folder will be `filtered_en_es`.
+    *   Location: `OUTPUT_DIR/filtered_<lang1>_<lang2>.../`
+    *   Content: JSONL files containing documents that matched the language(s) specified in the `LANGUAGES` variable. For example, if `LANGUAGES = ["en", "es"]`, the folder will be `filtered_en_es`.
 
 *   **Excluded Output (from Language Filter)**:
-    *   Location: `<your_output_directory>/non_<lang1>_<lang2>.../`
-    *   Content: JSONL files containing documents that did *not* match the specified language(s) and were thus excluded by the `LanguageFilter`.
+    *   Location: `OUTPUT_DIR/non_<lang1>_<lang2>.../`
+    *   Content: JSONL files containing documents that did *not* match the specified language(s) and were thus excluded by the `LanguageFilter`. The language codes in the path correspond to those in the `LANGUAGES` variable.
 
 *   **Logs**:
-    *   Location: `<logging_dir>/ray_logs/`
+    *   Location: `LOGGING_DIR/ray_logs/`
     *   Content: Log files generated by the Ray executor during the pipeline run. These are useful for debugging and monitoring progress.
 
-Make sure the output directories and logging directory are writable. If they don't exist, the script (or Ray) will attempt to create them.
+Make sure the output directories and logging directory (as defined in the script's configuration variables) are writable. If they don't exist, the script (or Ray) will attempt to create them.
