@@ -27,21 +27,29 @@ def run_for_rank(executor_ref: "RayPipelineExecutor", ranks: list[int]) -> Pipel
     from datatrove.utils.stats import PipelineStats
 
     # Sleep for the executor's timeout
+    # Sleep for the executor's timeout
     def run_for_rank_wrapper_with_sleep(rank, rank_id):
         time.sleep(random.randint(0, executor_ref.randomize_start_duration))
         return executor_ref._run_for_rank(rank, rank_id)
 
-    executor = executor_ref
-    rank_ids = list(range(len(ranks))) if executor.log_first else list(range(1, len(ranks) + 1))
-    stats = PipelineStats()
-    # We use simple map, so that all tasks are executed and errors are reported (raised) only after all tasks are finished
-    with multiprocess.pool.Pool(processes=len(ranks)) as pool:
-        # Consume results
-        deque(
-            pool.starmap(run_for_rank_wrapper_with_sleep, [(rank, rank_id) for rank_id, rank in zip(rank_ids, ranks)]),
-            maxlen=0,
-        )
-    return stats
+    executor = executor_ref  # Not strictly needed if only using executor_ref
+    rank_ids = list(range(len(ranks))) if executor_ref.log_first else list(range(1, len(ranks) + 1))
+
+    if len(ranks) == 1:
+        logger.info(f"Task {ranks[0]}: Running single rank directly without internal pool.")
+        # Directly execute for the single rank
+        actual_stats = run_for_rank_wrapper_with_sleep(ranks[0], rank_ids[0])
+        return actual_stats  # Return the actual stats from _run_for_rank
+    else:
+        logger.info(f"Task for ranks {ranks}: Running {len(ranks)} ranks using internal pool.")
+        # Original logic for multiple ranks
+        stats = PipelineStats()  # This is the original behavior, returning empty stats.
+        with multiprocess.pool.Pool(processes=len(ranks)) as pool:
+            deque(
+                pool.starmap(run_for_rank_wrapper_with_sleep, [(rank, rank_id) for rank_id, rank in zip(rank_ids, ranks)]),
+                maxlen=0,
+            )
+        return stats
 
 
 class RayPipelineExecutor(PipelineExecutor):
